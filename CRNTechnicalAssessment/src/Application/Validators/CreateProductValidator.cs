@@ -1,12 +1,19 @@
-﻿public class CreateProductValidator : AbstractValidator<CreateProductDto>
-{
-    public CreateProductValidator()
-    {
-        RuleFor(x => x.ProductName)
-            .NotEmpty()
-            .MaximumLength(255);
+﻿using Application.DTOs;
+using FluentValidation;
 
-        RuleFor(x => x.CreatedBy)
-            .NotEmpty();
+namespace Application.Validators
+{
+    public class CreateProductValidator : AbstractValidator<CreateProductDto>
+    {
+        public CreateProductValidator()
+        {
+            RuleFor(x => x.ProductName)
+                .NotEmpty().WithMessage("Product Name is required.")
+                .MaximumLength(255);
+
+            RuleFor(x => x.CreatedBy)
+                .NotEmpty().WithMessage("CreatedBy is required.")
+                .MaximumLength(100);
+        }
     }
 }
