@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers
 {
     [ApiController]
-    [ApiVersion("1.0")]
-    [Route("api/v{version:apiVersion}/[controller]")]
+    //[ApiVersion("1.0")]
+    [Route("api/[controller]")]
     public class AuthController : ControllerBase
     {
 
@@ -18,19 +18,33 @@ namespace API.Controllers
         }
 
         [HttpPost("login")]
-        public IActionResult Login(LoginDto dto)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        public IActionResult Login([FromBody] LoginDto dto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState); 
+            }
+
             if (dto.Username == "admin" && dto.Password == "123456")
             {
                 var token = _jwtService.GenerateToken(dto.Username);
 
                 return Ok(new
                 {
+                    StatusCode = StatusCodes.Status200OK,
+                    Message = "Login successful",
                     Token = token
                 });
             }
 
-            return Unauthorized("Invalid credentials");
+            return Unauthorized(new
+            {
+                StatusCode = StatusCodes.Status401Unauthorized,
+                Message = "Invalid username or password"
+            });
         }
     }
 }

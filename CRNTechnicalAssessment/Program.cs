@@ -1,17 +1,20 @@
+using API.Middleware;
 using Application.Interfaces;
 using Application.Services;
 using Application.Validators;
-using Infrastructure.Data;
-using Infrastructure.Data.Repositories;
-using Microsoft.EntityFrameworkCore;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using API.Middleware;
+using Infrastructure.Data;
+using Infrastructure.Data.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Versioning;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+
+using Serilog;
+using System.Text;
 
 public partial class Program
 {
@@ -20,7 +23,7 @@ public partial class Program
         var builder = WebApplication.CreateBuilder(args);
 
         // Add services to the container.
-        builder.Services.AddControllersWithViews();
+        builder.Services.AddControllers();
         builder.Services.AddFluentValidationAutoValidation();
 
         builder.Services.AddValidatorsFromAssemblyContaining<CreateProductValidator>();
@@ -29,8 +32,6 @@ public partial class Program
         builder.Services.AddScoped<IJwtService, JwtService>();
         builder.Services.AddScoped<UnitOfWork>();
         builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen();
-
 
         builder.Services.AddDbContext<ApplicationDbContext>(options =>
             options.UseSqlServer(builder.Configuration.GetConnectionString("connection")));
@@ -55,16 +56,44 @@ public partial class Program
             };
         });
 
-        builder.Services.AddApiVersioning(options =>
+        //builder.Services.AddApiVersioning(options =>
+        //{
+        //    options.DefaultApiVersion = new ApiVersion(1, 0);
+        //    options.AssumeDefaultVersionWhenUnspecified = true;
+        //    options.ReportApiVersions = true;
+        //    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        //});
+
+        builder.Services.AddSwaggerGen(options =>
         {
-            options.DefaultApiVersion = new ApiVersion(1, 0);
-            options.AssumeDefaultVersionWhenUnspecified = true;
-            options.ReportApiVersions = true;
-            options.ApiVersionReader = new UrlSegmentApiVersionReader();
+            options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "CRNTechnicalAssessment",
+                Version = "v1"
+            });
+
+            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+            {
+                Name = "Authorization",
+                Type = SecuritySchemeType.Http,
+                Scheme = "bearer",
+                BearerFormat = "JWT",
+                In = ParameterLocation.Header,
+                Description = "Enter JWT token. Example: Bearer eyJhbGciOiJIUzI1Ni..."
+            });
         });
 
-       
 
+
+
+
+        Log.Logger = new LoggerConfiguration()
+     .WriteTo.Console()
+     .WriteTo.File("Logs/log-.txt",
+         rollingInterval: RollingInterval.Day)
+     .CreateLogger();
+
+        builder.Host.UseSerilog();
 
 
         var app = builder.Build();
@@ -82,14 +111,17 @@ public partial class Program
         app.UseSwaggerUI();
 
         app.UseHttpsRedirection();
+
+        app.UseRouting();
+
         app.UseMiddleware<ExceptionMiddleware>();
 
         app.UseAuthentication();
         app.UseAuthorization();
 
-        app.UseRouting();
+        app.MapControllers();
 
-        app.UseAuthorization();
+        app.MapStaticAssets();
 
         app.MapStaticAssets();
 
@@ -97,7 +129,6 @@ public partial class Program
             name: "default",
             pattern: "{controller=Home}/{action=Index}/{id?}")
             .WithStaticAssets();
-
 
         app.Run();
     }
